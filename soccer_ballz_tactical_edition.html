@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soccer Ballz - Tactical Chess Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Inter:wght@400;600;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            user-select: none;
+            touch-action: none;
+            overflow-x: hidden;
+        }
+
+        .font-teko {
+            font-family: 'Teko', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .arcade-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+        }
+        .arcade-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        /* Rank Badge Colors */
+        .rank-S { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; border: 1px solid #fef08a; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .rank-A { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: white; }
+        .rank-B { background: linear-gradient(135deg, #3b82f6, #06b6d4); color: white; }
+        .rank-C { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .rank-D { background: linear-gradient(135deg, #eab308, #ca8a04); color: white; }
+        .rank-E { background: linear-gradient(135deg, #f97316, #c2410c); color: white; }
+        .rank-F { background: linear-gradient(135deg, #64748b, #334155); color: white; }
+
+        canvas {
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        #gameContainer:fullscreen {
+            background-color: #020617;
+            padding: 1rem;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glow-red { box-shadow: 0 0 18px rgba(239, 68, 68, 0.7); }
+        .glow-blue { box-shadow: 0 0 18px rgba(59, 130, 246, 0.7); }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-2 sm:p-3 bg-slate-950">
+
+    <div id="gameContainer" class="w-full max-w-5xl flex flex-col items-center">
+        
+        <!-- Header / Scoreboard -->
+        <header class="w-full glass-panel rounded-2xl p-2.5 mb-2 flex items-center justify-between border border-slate-800 shadow-2xl">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-600 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-lg border border-red-400">
+                    P1
+                </div>
+                <div>
+                    <h2 class="font-extrabold text-red-400 text-xs sm:text-sm leading-none uppercase tracking-wide">RED SQUAD</h2>
+                    <span id="p1Score" class="font-teko text-2xl sm:text-4xl font-bold leading-none text-white">0</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center">
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <span id="periodBadge" class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        DRAFT PHASE
+                    </span>
+                    <button onclick="toggleFullscreen()" title="Toggle Fullscreen" class="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700">
+                        <i class="fas fa-expand text-xs"></i>
+                    </button>
+                </div>
+                <div id="timerDisplay" class="font-teko text-2xl sm:text-4xl font-bold text-slate-200 tracking-wider">
+                    02:00
+                </div>
+                <div id="turnIndicator" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-400">
+                    DRAFT YOUR TEAM
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3 text-right">
+                <div>
+                    <h2 class="font-extrabold text-blue-400 text-xs sm:text-sm leading-none uppercase tracking-wide">BLUE SQUAD</h2>
+                    <span id="p2Score" class="font-teko text-2xl sm:text-4xl font-bold leading-none text-white">0</span>
+                </div>
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-lg border border-blue-400">
+                    P2
+                </div>
+            </div>
+        </header>
+
+        <!-- Draft Overlay -->
+        <div id="draftOverlay" class="w-full glass-panel rounded-2xl p-3 mb-2 flex flex-col items-center border border-amber-500/30 shadow-2xl">
+            <div class="text-center mb-2">
+                <h2 class="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 uppercase tracking-wider">
+                    ⚽ WORLD LEGENDS & SUPERSTARS DRAFT ⚽
+                </h2>
+                <p id="draftStatusText" class="text-xs text-slate-300 font-semibold mt-0.5">
+                    Player 1 (Red Team), select your 1st player! <span class="text-amber-400">(Max 1 Rank S per team)</span>
+                </p>
+            </div>
+
+            <div id="draftCardsGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 w-full max-h-[300px] sm:max-h-[340px] overflow-y-auto p-1">
+            </div>
+        </div>
+
+        <!-- Canvas Pitch Viewport -->
+        <div id="canvasWrapper" class="relative w-full aspect-[16/10] max-h-[540px] rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl bg-emerald-950 flex items-center justify-center">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <div id="matchOverlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center hidden z-20 p-6 text-center">
+                <h2 id="overlayTitle" class="text-4xl sm:text-6xl font-black text-amber-400 uppercase tracking-widest mb-2 font-teko">HALFTIME</h2>
+                <p id="overlaySubtitle" class="text-slate-300 text-sm sm:text-lg mb-6 max-w-md">Get ready for the 2nd Half!</p>
+                <button id="overlayBtn" onclick="handleOverlayButtonClick()" class="arcade-btn px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-lg rounded-xl uppercase tracking-wider shadow-lg border border-amber-300">
+                    CONTINUE
+                </button>
+            </div>
+
+            <div id="toastBox" class="absolute top-4 pointer-events-none bg-slate-900/90 border border-amber-500/40 text-amber-300 px-4 py-2 rounded-xl text-xs font-bold font-teko tracking-widest text-lg uppercase shadow-2xl opacity-0 transition-opacity duration-300 z-30">
+                NOTIFICATION
+            </div>
+        </div>
+
+        <!-- Bottom Controls & Special Ability Bar -->
+        <div class="w-full mt-2 grid grid-cols-1 md:grid-cols-12 gap-2 items-stretch">
+            
+            <!-- P1 Special Ability Button -->
+            <div class="md:col-span-3 glass-panel p-2 rounded-xl border border-red-500/30 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-black text-red-400 uppercase tracking-widest">P1 S-RANK POWER</span>
+                    <span id="p1AbilityName" class="text-[10px] font-extrabold text-amber-400 truncate max-w-[120px]">No S-Rank Drafted</span>
+                </div>
+                <button id="p1AbilityBtn" onclick="useSpecialAbility(1)" disabled class="arcade-btn w-full py-1.5 bg-slate-800 text-slate-500 font-extrabold text-[10px] rounded-lg uppercase tracking-wider border border-slate-700 cursor-not-allowed opacity-60">
+                    <i class="fas fa-bolt mr-1"></i> <span id="p1AbilityText">S-ABILITY LOCKED</span>
+                </button>
+            </div>
+
+            <!-- Player Selection Bar -->
+            <div class="md:col-span-6 glass-panel p-2 rounded-xl border border-slate-800 flex flex-col justify-center">
+                <div class="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    SELECT ACTIVE PIECE TO LAUNCH
+                </div>
+                <div id="rosterButtons" class="grid grid-cols-5 gap-1">
+                </div>
+            </div>
+
+            <!-- P2 Special Ability Button -->
+            <div class="md:col-span-3 glass-panel p-2 rounded-xl border border-blue-500/30 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-black text-blue-400 uppercase tracking-widest">P2 S-RANK POWER</span>
+                    <span id="p2AbilityName" class="text-[10px] font-extrabold text-amber-400 truncate max-w-[120px]">No S-Rank Drafted</span>
+                </div>
+                <button id="p2AbilityBtn" onclick="useSpecialAbility(2)" disabled class="arcade-btn w-full py-1.5 bg-slate-800 text-slate-500 font-extrabold text-[10px] rounded-lg uppercase tracking-wider border border-slate-700 cursor-not-allowed opacity-60">
+                    <i class="fas fa-bolt mr-1"></i> <span id="p2AbilityText">S-ABILITY LOCKED</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Comprehensive Game Guide & Abilities Description Under Game -->
+        <div class="w-full mt-4 glass-panel p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-2xl">
+            <div class="flex items-center gap-2 mb-3 pb-2 border-b border-slate-800">
+                <i class="fas fa-book-open text-amber-400 text-lg"></i>
+                <h3 class="font-teko text-2xl sm:text-3xl font-bold tracking-wider text-amber-400 uppercase leading-none">
+                    GAME GUIDE & SPECIAL ABILITIES MANUAL
+                </h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+                <!-- Rules Column -->
+                <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-2">
+                    <h4 class="font-extrabold text-white text-sm uppercase tracking-wide flex items-center gap-1.5 text-amber-300">
+                        <i class="fas fa-gamepad"></i> How To Play
+                    </h4>
+                    <ul class="space-y-1.5 text-slate-300 font-medium">
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-amber-400 font-bold">1. Draft Phase:</span> Draft 5 stars into your squad (max 1 S-Rank legend per team).
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-red-400 font-bold">2. Turn-Based Launch:</span> Alternate flicks turn-by-turn. Select your active disc, pull back to set force/direction, then release.
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-blue-400 font-bold">3. Scoring Goals:</span> Drive the ball into the opponent's net. Player discs bounce off the post/lines and cannot enter the goal.
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-emerald-400 font-bold">4. Special Abilities:</span> Trigger your once-per-match S-Rank ability for unique tactical advantages!
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Ability Descriptions Column -->
+                <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-2">
+                    <h4 class="font-extrabold text-white text-sm uppercase tracking-wide flex items-center gap-1.5 text-amber-300">
+                        <i class="fas fa-bolt"></i> All 10 S-Rank Special Abilities
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1 text-[11px] font-semibold text-slate-300 max-h-[220px] overflow-y-auto pr-1">
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Messi (Ankara Magic):</span> Grants an immediate 2nd extra turn right after Messi flicks!
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">C. Ronaldo (Siu Rocket):</span> Bowling Ball mode. Moves straight, blasting all defenders away without changing course.
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Mbappé (Sonic Dash):</span> +200% Launch Speed (3x force boost) with extreme wall & disc bounce speed!
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Haaland (Viking Smash):</span> Juggernaut Bowling Ball. Smashes all defenders out of the way straight to the ball.
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">De Bruyne (Laser Pass):</span> Teleports the ball directly in front of an open teammate upon touch!
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Ronaldinho (Joga Bonito):</span> Ball sticks to Ronaldinho's disc as he trick-bounces before releasing.
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Modrić (Trivela Curve):</span> Displays projected trajectories for BOTH Modrić & the ball with curve arc physics!
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Salah (Pharaoh Sprint):</span> Free wing dash anywhere on pitch without wasting your flick turn.
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">van Dijk (Immovable Wall):</span> Grows 2x size, guards the goal mouth, and becomes immovable for 1 turn.
+                        </div>
+                        <div class="bg-slate-800/80 p-1.5 rounded border border-amber-500/20">
+                            <span class="text-amber-400 font-bold">Courtois (Octopus Reach):</span> Shrinks your team's goal post opening height by 50% for 3 FULL TURNS.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const PITCH_WIDTH = 900;
+        const PITCH_HEIGHT = 560;
+        const PLAYER_RADIUS = 22;
+        const BALL_RADIUS = 12;
+        const POST_RADIUS = 8;
+        const GOAL_DEPTH = 30;
+        const GOAL_HEIGHT = 160;
+        const GOAL_TOP = (PITCH_HEIGHT - GOAL_HEIGHT) / 2;
+        const GOAL_BOTTOM = GOAL_TOP + GOAL_HEIGHT;
+        const FRICTION = 0.982;
+        const WALL_BOUNCE = 0.85;
+
+        const CULT_PLAYERS_POOL = [
+            { name: "Lionel Messi", pos: "FWD", rank: "S", power: 92, speed: 91, mass: 68, ability: "Ankara Magic" },
+            { name: "C. Ronaldo", pos: "FWD", rank: "S", power: 97, speed: 89, mass: 85, ability: "Siu Rocket" },
+            { name: "Kylian Mbappé", pos: "FWD", rank: "S", power: 93, speed: 98, mass: 75, ability: "Sonic Dash" },
+            { name: "Erling Haaland", pos: "FWD", rank: "S", power: 98, speed: 90, mass: 94, ability: "Viking Smash" },
+            { name: "Kevin De Bruyne", pos: "MID", rank: "S", power: 94, speed: 78, mass: 76, ability: "Laser Pass" },
+            { name: "Virgil van Dijk", pos: "DEF", rank: "S", power: 91, speed: 81, mass: 98, ability: "Immovable Wall" },
+            { name: "Ronaldinho", pos: "FWD", rank: "S", power: 90, speed: 93, mass: 78, ability: "Joga Bonito" },
+            { name: "Luka Modrić", pos: "MID", rank: "S", power: 88, speed: 82, mass: 66, ability: "Trivela Curve" },
+            { name: "Mohamed Salah", pos: "FWD", rank: "S", power: 91, speed: 94, mass: 73, ability: "Pharaoh Sprint" },
+            { name: "Thibaut Courtois", pos: "GK", rank: "S", power: 89, speed: 64, mass: 96, ability: "Octopus Reach" },
+
+            { name: "Jude Bellingham", pos: "MID", rank: "A", power: 89, speed: 86, mass: 82 },
+            { name: "Vinícius Jr", pos: "FWD", rank: "A", power: 87, speed: 96, mass: 71 },
+            { name: "Harry Kane", pos: "FWD", rank: "A", power: 93, speed: 72, mass: 88 },
+            { name: "R. Lewandowski", pos: "FWD", rank: "A", power: 91, speed: 78, mass: 86 },
+            { name: "Antoine Griezmann", pos: "FWD", rank: "A", power: 86, speed: 84, mass: 72 },
+            { name: "Rodri", pos: "MID", rank: "A", power: 88, speed: 74, mass: 90 },
+            { name: "Kyle Walker", pos: "DEF", rank: "A", power: 84, speed: 95, mass: 83 },
+            { name: "Bukayo Saka", pos: "FWD", rank: "A", power: 86, speed: 89, mass: 72 },
+            { name: "Alisson Becker", pos: "GK", rank: "A", power: 85, speed: 65, mass: 91 },
+            { name: "Declan Rice", pos: "MID", rank: "A", power: 87, speed: 81, mass: 85 },
+
+            { name: "Son Heung-min", pos: "FWD", rank: "B", power: 88, speed: 89, mass: 74 },
+            { name: "Bruno Fernandes", pos: "MID", rank: "B", power: 87, speed: 76, mass: 69 },
+            { name: "Federico Valverde", pos: "MID", rank: "B", power: 90, speed: 91, mass: 78 },
+            { name: "William Saliba", pos: "DEF", rank: "B", power: 83, speed: 84, mass: 88 },
+            { name: "Lautaro Martínez", pos: "FWD", rank: "B", power: 86, speed: 83, mass: 80 }
+        ];
+
+        let canvas, ctx;
+        let gamePhase = 'DRAFT'; 
+        let currentHalf = 1;
+        let timerSeconds = 120;
+        let timerInterval = null;
+
+        let draftPool = [];
+        let p1Drafted = [];
+        let p2Drafted = [];
+        let draftTurn = 1; 
+
+        let currentTurn = 1; 
+        let selectedPlayerIndex = 3;
+        let isDragging = false;
+        let isMoving = false;
+        let dragStartX = 0, dragStartY = 0, dragCurrentX = 0, dragCurrentY = 0;
+
+        let p1Score = 0, p2Score = 0;
+        let team1Roster = [];
+        let team2Roster = [];
+        let ball = { x: 0, y: 0, vx: 0, vy: 0, radius: BALL_RADIUS, attachedTo: null, curveSpin: 0 };
+        let particles = [];
+
+        let p1SpecialAbilityUsed = false, p2SpecialAbilityUsed = false;
+        let p1SpecialActive = false, p2SpecialActive = false;
+
+        let messiExtraTurn = false;
+        let courtoisShrinkTeam = 0; 
+        let courtoisShrinkTurnsRemaining = 0;
+        let vanDijkGuardTurn = 0;
+        let salahDashMode = false;
+        let modricTrivelaActive = false;
+
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'kick') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+                    gain.gain.setValueAtTime(0.6, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now); osc.stop(now + 0.12);
+                } else if (type === 'bounce') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(240, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now); osc.stop(now + 0.08);
+                } else if (type === 'goal') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.4);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4);
+                } else if (type === 'ability') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(900, now + 0.25);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now); osc.stop(now + 0.25);
+                }
+            } catch(e) {}
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastBox');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('gameContainer');
+            try {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    let req = null;
+                    if (container.requestFullscreen) {
+                        req = container.requestFullscreen();
+                    } else if (container.webkitRequestFullscreen) {
+                        req = container.webkitRequestFullscreen();
+                    }
+                    
+                    if (req && typeof req.catch === 'function') {
+                        req.catch(err => {
+                            console.warn("Fullscreen denied by environment:", err);
+                            showToast("FULLSCREEN RESTRICTED IN PREVIEW");
+                        });
+                    }
+                } else {
+                    let exit = null;
+                    if (document.exitFullscreen) {
+                        exit = document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        exit = document.webkitExitFullscreen();
+                    }
+                    
+                    if (exit && typeof exit.catch === 'function') {
+                        exit.catch(err => {
+                            console.warn("Error exiting fullscreen:", err);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn("Fullscreen permission error:", err);
+                showToast("FULLSCREEN RESTRICTED IN PREVIEW");
+            }
+        }
+
+        function initDraftPhase() {
+            gamePhase = 'DRAFT';
+            document.getElementById('draftOverlay').classList.remove('hidden');
+            
+            p1Drafted = []; p2Drafted = []; draftTurn = 1;
+
+            const shuffled = [...CULT_PLAYERS_POOL].sort(() => Math.random() - 0.5);
+            draftPool = shuffled.slice(0, 20);
+
+            updateDraftStatusText();
+            renderDraftCards();
+        }
+
+        function updateDraftStatusText() {
+            const txt = document.getElementById('draftStatusText');
+            if (draftTurn === 1) {
+                txt.innerHTML = `Player 1 (<span class="text-red-400 font-bold">Red Squad</span>), select player #${p1Drafted.length + 1}! <span class="text-amber-400">(Max 1 Rank S)</span>`;
+            } else {
+                txt.innerHTML = `Player 2 (<span class="text-blue-400 font-bold">Blue Squad</span>), select player #${p2Drafted.length + 1}! <span class="text-amber-400">(Max 1 Rank S)</span>`;
+            }
+        }
+
+        function draftPlayer(index) {
+            initAudio();
+            const player = draftPool.splice(index, 1)[0];
+
+            if (draftTurn === 1) {
+                p1Drafted.push(player);
+                draftTurn = 2;
+            } else {
+                p2Drafted.push(player);
+                draftTurn = 1;
+            }
+
+            playSound('kick');
+
+            if (p1Drafted.length === 5 && p2Drafted.length === 5) {
+                finishDraftAndStartMatch();
+            } else {
+                updateDraftStatusText();
+                renderDraftCards();
+            }
+        }
+
+        function renderDraftCards() {
+            const grid = document.getElementById('draftCardsGrid');
+            grid.innerHTML = '';
+
+            const p1HasS = p1Drafted.some(p => p.rank === 'S');
+            const p2HasS = p2Drafted.some(p => p.rank === 'S');
+            const currentHasS = (draftTurn === 1 && p1HasS) || (draftTurn === 2 && p2HasS);
+
+            draftPool.forEach((player, idx) => {
+                const card = document.createElement('div');
+                const isS = player.rank === 'S';
+                const isDisabled = isS && currentHasS;
+
+                card.className = `glass-panel p-1.5 rounded-lg border flex flex-col justify-between transition transform hover:-translate-y-0.5 cursor-pointer ${
+                    isDisabled ? 'opacity-40 border-slate-800 cursor-not-allowed' : 'border-slate-800 hover:border-amber-400'
+                }`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between gap-1 mb-0.5">
+                            <span class="font-black text-[10px] text-white truncate max-w-[75px]">${player.name}</span>
+                            <span class="rank-Badge px-1 py-0.2 rounded text-[8px] font-black rank-${player.rank}">${player.rank}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[8px] font-bold text-slate-300">
+                            <span class="px-1 py-0.2 bg-slate-800 rounded text-slate-400">${player.pos}</span>
+                            <span class="text-amber-300">P:${player.power}</span>
+                            <span class="text-emerald-300">S:${player.speed}</span>
+                        </div>
+                    </div>
+                    ${player.ability ? `<div class="mt-1 text-[8px] font-black text-amber-300 truncate bg-amber-500/15 px-1 py-0.2 rounded">⚡ ${player.ability}</div>` : ''}
+                    <button onclick="draftPlayer(${idx})" ${isDisabled ? 'disabled' : ''} class="mt-1 w-full py-0.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[9px] rounded uppercase tracking-wider">
+                        ${isDisabled ? 'LOCKED' : 'DRAFT'}
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function finishDraftAndStartMatch() {
+            document.getElementById('draftOverlay').classList.add('hidden');
+            gamePhase = 'MATCH';
+            document.getElementById('periodBadge').innerText = "1ST HALF";
+
+            team1Roster = p1Drafted.map((p, i) => ({
+                ...p, team: 1, role: p.pos || 'FWD', num: i + 1,
+                x: 0, y: 0, vx: 0, vy: 0, radius: PLAYER_RADIUS,
+                isBowlingBall: false, isImmovable: false, originalRadius: PLAYER_RADIUS
+            }));
+
+            team2Roster = p2Drafted.map((p, i) => ({
+                ...p, team: 2, role: p.pos || 'FWD', num: i + 1,
+                x: 0, y: 0, vx: 0, vy: 0, radius: PLAYER_RADIUS,
+                isBowlingBall: false, isImmovable: false, originalRadius: PLAYER_RADIUS
+            }));
+
+            setupMatchPositions();
+            updateAbilityUI();
+            updateRosterUI();
+            startTimer();
+
+            showToast("🎮 KICKOFF! RED TEAM'S TURN");
+        }
+
+        function setupMatchPositions() {
+            const redCoords = [
+                { x: 70, y: PITCH_HEIGHT / 2 },
+                { x: 220, y: PITCH_HEIGHT / 3 },
+                { x: 220, y: (PITCH_HEIGHT / 3) * 2 },
+                { x: 360, y: PITCH_HEIGHT / 2 },
+                { x: 440, y: PITCH_HEIGHT / 2 - 35 }
+            ];
+
+            const blueCoords = [
+                { x: PITCH_WIDTH - 70, y: PITCH_HEIGHT / 2 },
+                { x: PITCH_WIDTH - 220, y: PITCH_HEIGHT / 3 },
+                { x: PITCH_WIDTH - 220, y: (PITCH_HEIGHT / 3) * 2 },
+                { x: PITCH_WIDTH - 360, y: PITCH_HEIGHT / 2 },
+                { x: PITCH_WIDTH - 440, y: PITCH_HEIGHT / 2 + 35 }
+            ];
+
+            team1Roster.forEach((p, idx) => {
+                p.x = redCoords[idx].x; p.y = redCoords[idx].y;
+                p.vx = 0; p.vy = 0; p.radius = PLAYER_RADIUS;
+                p.isBowlingBall = false; p.isImmovable = false;
+            });
+
+            team2Roster.forEach((p, idx) => {
+                p.x = blueCoords[idx].x; p.y = blueCoords[idx].y;
+                p.vx = 0; p.vy = 0; p.radius = PLAYER_RADIUS;
+                p.isBowlingBall = false; p.isImmovable = false;
+            });
+
+            ball.x = PITCH_WIDTH / 2; ball.y = PITCH_HEIGHT / 2;
+            ball.vx = 0; ball.vy = 0; ball.attachedTo = null; ball.curveSpin = 0;
+
+            isMoving = false;
+            selectedPlayerIndex = 3;
+            salahDashMode = false;
+            modricTrivelaActive = false;
+        }
+
+        function setupInputListeners() {
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            window.addEventListener('pointermove', handlePointerMove);
+            window.addEventListener('pointerup', handlePointerUp);
+        }
+
+        function getCanvasPoint(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function handlePointerDown(e) {
+            if (gamePhase !== 'MATCH' || isMoving) return;
+            initAudio();
+
+            const pt = getCanvasPoint(e);
+            const roster = currentTurn === 1 ? team1Roster : team2Roster;
+
+            // Check if user clicked on ANY disc belonging to the active team on field
+            let clickedIdx = -1;
+            for (let i = 0; i < roster.length; i++) {
+                const p = roster[i];
+                const dist = Math.hypot(pt.x - p.x, pt.y - p.y);
+                if (dist <= p.radius + 14) {
+                    clickedIdx = i;
+                    break;
+                }
+            }
+
+            if (clickedIdx !== -1) {
+                selectedPlayerIndex = clickedIdx;
+                updateRosterUI();
+                const activePlayer = roster[selectedPlayerIndex];
+
+                if (salahDashMode && activePlayer.name.includes("Salah")) {
+                    activePlayer.x = Math.max(PLAYER_RADIUS, Math.min(PITCH_WIDTH - PLAYER_RADIUS, pt.x));
+                    activePlayer.y = Math.max(PLAYER_RADIUS, Math.min(PITCH_HEIGHT - PLAYER_RADIUS, pt.y));
+                    createParticles(activePlayer.x, activePlayer.y, '#f59e0b', 30);
+                    playSound('ability');
+                    showToast("⚡ PHARAOH SPRINT DASH EXECUTED!");
+                    salahDashMode = false;
+                    if (currentTurn === 1) p1SpecialActive = false;
+                    if (currentTurn === 2) p2SpecialActive = false;
+                    updateAbilityUI();
+                    return;
+                }
+
+                isDragging = true;
+                dragStartX = activePlayer.x;
+                dragStartY = activePlayer.y;
+                dragCurrentX = pt.x;
+                dragCurrentY = pt.y;
+                try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging) return;
+            const pt = getCanvasPoint(e);
+            dragCurrentX = pt.x;
+            dragCurrentY = pt.y;
+        }
+
+        function handlePointerUp(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const roster = currentTurn === 1 ? team1Roster : team2Roster;
+            const activePlayer = roster[selectedPlayerIndex];
+
+            const dx = dragStartX - dragCurrentX;
+            const dy = dragStartY - dragCurrentY;
+            const pullDist = Math.hypot(dx, dy);
+
+            if (pullDist > 10) {
+                const powerRatio = Math.min(pullDist / 180, 1.0);
+                let baseForce = (12 + (activePlayer.power / 100) * 14) * powerRatio;
+
+                const isSpecial = (currentTurn === 1 && p1SpecialActive) || (currentTurn === 2 && p2SpecialActive);
+
+                if (isSpecial) {
+                    playSound('ability');
+                    createParticles(activePlayer.x, activePlayer.y, currentTurn === 1 ? '#ef4444' : '#3b82f6', 25);
+
+                    if (activePlayer.name.includes("Messi")) {
+                        messiExtraTurn = true;
+                        showToast("✨ ANKARA MAGIC! EXTRA TURN GRANTED!");
+                        baseForce *= 1.4;
+                    } else if (activePlayer.name.includes("Ronaldo") || activePlayer.name.includes("Haaland")) {
+                        activePlayer.isBowlingBall = true;
+                        baseForce *= 1.8;
+                        showToast("🎳 BOWLING BALL POWER ACTIVATED!");
+                    } else if (activePlayer.name.includes("Mbappé")) {
+                        // Sonic Dash: +200% Launch Speed (3x total force)
+                        baseForce *= 3.0;
+                        showToast("⚡ SONIC DASH +200% LAUNCH SPEED!");
+                    } else if (activePlayer.name.includes("De Bruyne")) {
+                        activePlayer.isLaserPass = true;
+                        baseForce *= 1.5;
+                        showToast("🎯 LASER PASS READY!");
+                    } else if (activePlayer.name.includes("Ronaldinho")) {
+                        activePlayer.isStickyBall = true;
+                        baseForce *= 1.5;
+                        showToast("🤙 JOGA BONITO STICKY BALL!");
+                    } else if (activePlayer.name.includes("Modrić")) {
+                        modricTrivelaActive = true;
+                        ball.curveSpin = 0.12; // Modric curve spin effect
+                        baseForce *= 1.5;
+                        showToast("🔮 TRIVELA CURVE SHOT WITH PREDICTION!");
+                    }
+
+                    if (currentTurn === 1) p1SpecialActive = false;
+                    if (currentTurn === 2) p2SpecialActive = false;
+                    updateAbilityUI();
+                }
+
+                const angle = Math.atan2(dy, dx);
+                activePlayer.vx = Math.cos(angle) * baseForce;
+                activePlayer.vy = Math.sin(angle) * baseForce;
+
+                isMoving = true;
+                playSound('kick');
+            }
+        }
+
+        window.useSpecialAbility = function(team) {
+            if (gamePhase !== 'MATCH') return;
+            if (team !== currentTurn) {
+                showToast(`It is currently Player ${currentTurn}'s turn!`);
+                return;
+            }
+
+            const roster = team === 1 ? team1Roster : team2Roster;
+            const sIdx = roster.findIndex(p => p.rank === 'S');
+            if (sIdx === -1) return;
+
+            const sPlayer = roster[sIdx];
+            selectedPlayerIndex = sIdx;
+
+            if (team === 1) {
+                if (p1SpecialAbilityUsed) return;
+                p1SpecialActive = true; p1SpecialAbilityUsed = true;
+            } else {
+                if (p2SpecialAbilityUsed) return;
+                p2SpecialActive = true; p2SpecialAbilityUsed = true;
+            }
+
+            if (sPlayer.name.includes("van Dijk")) {
+                sPlayer.radius = PLAYER_RADIUS * 2;
+                sPlayer.isImmovable = true;
+                sPlayer.x = team === 1 ? 45 : PITCH_WIDTH - 45;
+                sPlayer.y = PITCH_HEIGHT / 2;
+                vanDijkGuardTurn = team;
+                showToast("🛡️ IMMOVABLE WALL GUARDS THE GOAL!");
+                playSound('ability');
+            } else if (sPlayer.name.includes("Courtois")) {
+                // Courtois goal shrink lasts 3 full turns!
+                courtoisShrinkTeam = team;
+                courtoisShrinkTurnsRemaining = 3;
+                showToast("🐙 OCTOPUS REACH SHRINKS GOAL FOR 3 TURNS!");
+                playSound('ability');
+            } else if (sPlayer.name.includes("Salah")) {
+                salahDashMode = true;
+                showToast("⚡ CLICK ANYWHERE ON PITCH TO FREE DASH!");
+                playSound('ability');
+            } else if (sPlayer.name.includes("Modrić")) {
+                modricTrivelaActive = true;
+                showToast("🔮 TRIVELA CURVE VISION ACTIVATED!");
+                playSound('ability');
+            }
+
+            updateAbilityUI();
+            updateRosterUI();
+        };
+
+        function updateAbilityUI() {
+            const p1SRank = p1Drafted.find(p => p.rank === 'S');
+            const p2SRank = p2Drafted.find(p => p.rank === 'S');
+
+            const p1Btn = document.getElementById('p1AbilityBtn');
+            const p1Name = document.getElementById('p1AbilityName');
+            const p1Text = document.getElementById('p1AbilityText');
+            if (p1SRank) {
+                p1Name.innerText = `${p1SRank.name} (${p1SRank.ability})`;
+                if (p1SpecialActive) {
+                    p1Text.innerText = "ACTIVE!";
+                    p1Btn.className = "arcade-btn w-full py-1.5 bg-amber-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider animate-pulse border border-amber-300";
+                    p1Btn.disabled = false;
+                } else if (p1SpecialAbilityUsed) {
+                    p1Text.innerText = "USED";
+                    p1Btn.className = "arcade-btn w-full py-1.5 bg-slate-800 text-slate-500 font-extrabold text-[10px] rounded-lg uppercase tracking-wider opacity-60 border border-slate-700 cursor-not-allowed";
+                    p1Btn.disabled = true;
+                } else {
+                    p1Text.innerText = "READY TO USE";
+                    p1Btn.className = "arcade-btn w-full py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider border border-red-400";
+                    p1Btn.disabled = false;
+                }
+            }
+
+            const p2Btn = document.getElementById('p2AbilityBtn');
+            const p2Name = document.getElementById('p2AbilityName');
+            const p2Text = document.getElementById('p2AbilityText');
+            if (p2SRank) {
+                p2Name.innerText = `${p2SRank.name} (${p2SRank.ability})`;
+                if (p2SpecialActive) {
+                    p2Text.innerText = "ACTIVE!";
+                    p2Btn.className = "arcade-btn w-full py-1.5 bg-amber-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider animate-pulse border border-amber-300";
+                    p2Btn.disabled = false;
+                } else if (p2SpecialAbilityUsed) {
+                    p2Text.innerText = "USED";
+                    p2Btn.className = "arcade-btn w-full py-1.5 bg-slate-800 text-slate-500 font-extrabold text-[10px] rounded-lg uppercase tracking-wider opacity-60 border border-slate-700 cursor-not-allowed";
+                    p2Btn.disabled = true;
+                } else {
+                    p2Text.innerText = "READY TO USE";
+                    p2Btn.className = "arcade-btn w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider border border-blue-400";
+                    p2Btn.disabled = false;
+                }
+            }
+        }
+
+        window.selectRosterPlayer = function(index) {
+            if (isMoving) return;
+            selectedPlayerIndex = index;
+            updateRosterUI();
+        };
+
+        function updateRosterUI() {
+            const container = document.getElementById('rosterButtons');
+            container.innerHTML = '';
+
+            const roster = currentTurn === 1 ? team1Roster : team2Roster;
+            const isRed = currentTurn === 1;
+
+            if (!roster || roster.length === 0) return;
+
+            roster.forEach((p, idx) => {
+                const btn = document.createElement('button');
+                const isSelected = idx === selectedPlayerIndex;
+
+                btn.onclick = () => selectRosterPlayer(idx);
+                btn.className = `arcade-btn py-1 px-1 rounded-lg flex flex-col items-center justify-center border text-[9px] font-bold ${
+                    isSelected 
+                        ? (isRed ? 'bg-red-600 border-red-300 text-white glow-red' : 'bg-blue-600 border-blue-300 text-white glow-blue')
+                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }`;
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-1">
+                        <span class="font-black">#${p.num}</span>
+                        <span class="rank-Badge px-1 text-[7px] rounded rank-${p.rank}">${p.rank}</span>
+                    </div>
+                    <span class="text-[8px] truncate max-w-full leading-tight mt-0.5">${p.role}</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function updatePhysics() {
+            if (!isMoving) return;
+
+            let totalMotion = 0;
+
+            let leftGoalTop = GOAL_TOP, leftGoalBottom = GOAL_BOTTOM;
+            let rightGoalTop = GOAL_TOP, rightGoalBottom = GOAL_BOTTOM;
+
+            if (courtoisShrinkTurnsRemaining > 0 && courtoisShrinkTeam === 1) {
+                leftGoalTop = GOAL_TOP + GOAL_HEIGHT * 0.25;
+                leftGoalBottom = GOAL_BOTTOM - GOAL_HEIGHT * 0.25;
+            }
+            if (courtoisShrinkTurnsRemaining > 0 && courtoisShrinkTeam === 2) {
+                rightGoalTop = GOAL_TOP + GOAL_HEIGHT * 0.25;
+                rightGoalBottom = GOAL_BOTTOM - GOAL_HEIGHT * 0.25;
+            }
+
+            const posts = [
+                { x: 0, y: leftGoalTop }, { x: 0, y: leftGoalBottom },
+                { x: PITCH_WIDTH, y: rightGoalTop }, { x: PITCH_WIDTH, y: rightGoalBottom }
+            ];
+
+            // 1. STICKY BALL & TRIVELA CURVE PHYSICS
+            if (ball.attachedTo) {
+                ball.x = ball.attachedTo.x + Math.cos(Date.now() * 0.01) * 18;
+                ball.y = ball.attachedTo.y + Math.sin(Date.now() * 0.01) * 18;
+                ball.vx = ball.attachedTo.vx;
+                ball.vy = ball.attachedTo.vy;
+            } else {
+                if (ball.curveSpin !== 0) {
+                    ball.vx += ball.vy * ball.curveSpin * 0.15;
+                    ball.vy -= ball.vx * ball.curveSpin * 0.15;
+                }
+
+                ball.x += ball.vx; ball.y += ball.vy;
+                ball.vx *= FRICTION; ball.vy *= FRICTION;
+            }
+            totalMotion += Math.hypot(ball.vx, ball.vy);
+
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius; ball.vy = -ball.vy * WALL_BOUNCE; playSound('bounce');
+            } else if (ball.y + ball.radius > PITCH_HEIGHT) {
+                ball.y = PITCH_HEIGHT - ball.radius; ball.vy = -ball.vy * WALL_BOUNCE; playSound('bounce');
+            }
+
+            if (ball.x - ball.radius < 0) {
+                if (ball.y > leftGoalTop && ball.y < leftGoalBottom) {
+                    handleGoalScored(2); return;
+                } else {
+                    ball.x = ball.radius; ball.vx = -ball.vx * WALL_BOUNCE; playSound('bounce');
+                }
+            }
+
+            if (ball.x + ball.radius > PITCH_WIDTH) {
+                if (ball.y > rightGoalTop && ball.y < rightGoalBottom) {
+                    handleGoalScored(1); return;
+                } else {
+                    ball.x = PITCH_WIDTH - ball.radius; ball.vx = -ball.vx * WALL_BOUNCE; playSound('bounce');
+                }
+            }
+
+            posts.forEach(post => {
+                const dx = ball.x - post.x; const dy = ball.y - post.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = ball.radius + POST_RADIUS;
+                if (dist < minDist && dist > 0) {
+                    const nx = dx / dist; const ny = dy / dist;
+                    ball.x = post.x + nx * minDist; ball.y = post.y + ny * minDist;
+                    const dot = ball.vx * nx + ball.vy * ny;
+                    ball.vx = (ball.vx - 2 * dot * nx) * WALL_BOUNCE;
+                    ball.vy = (ball.vy - 2 * dot * ny) * WALL_BOUNCE;
+                    playSound('bounce');
+                }
+            });
+
+            // 2. PLAYER DISCS PHYSICS
+            const allPlayers = [...team1Roster, ...team2Roster];
+
+            allPlayers.forEach(p => {
+                if (!p.isImmovable) {
+                    p.x += p.vx; p.y += p.vy;
+                    p.vx *= FRICTION; p.vy *= FRICTION;
+                } else {
+                    p.vx = 0; p.vy = 0;
+                }
+                totalMotion += Math.hypot(p.vx, p.vy);
+
+                if (p.y - p.radius < 0) {
+                    p.y = p.radius; p.vy = -p.vy * WALL_BOUNCE; playSound('bounce');
+                } else if (p.y + p.radius > PITCH_HEIGHT) {
+                    p.y = PITCH_HEIGHT - p.radius; p.vy = -p.vy * WALL_BOUNCE; playSound('bounce');
+                }
+
+                if (p.x - p.radius < 0) {
+                    p.x = p.radius; p.vx = -p.vx * WALL_BOUNCE; playSound('bounce');
+                } else if (p.x + p.radius > PITCH_WIDTH) {
+                    p.x = PITCH_WIDTH - p.radius; p.vx = -p.vx * WALL_BOUNCE; playSound('bounce');
+                }
+
+                posts.forEach(post => {
+                    const dx = p.x - post.x; const dy = p.y - post.y;
+                    const dist = Math.hypot(dx, dy);
+                    const minDist = p.radius + POST_RADIUS;
+                    if (dist < minDist && dist > 0) {
+                        const nx = dx / dist; const ny = dy / dist;
+                        p.x = post.x + nx * minDist; p.y = post.y + ny * minDist;
+                        const dot = p.vx * nx + p.vy * ny;
+                        p.vx = (p.vx - 2 * dot * nx) * WALL_BOUNCE;
+                        p.vy = (p.vy - 2 * dot * ny) * WALL_BOUNCE;
+                        playSound('bounce');
+                    }
+                });
+            });
+
+            // 3. PLAYER - BALL COLLISIONS
+            allPlayers.forEach(p => {
+                const dx = ball.x - p.x; const dy = ball.y - p.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = p.radius + ball.radius;
+
+                if (dist < minDist && dist > 0) {
+                    if (p.isLaserPass) {
+                        p.isLaserPass = false;
+                        const teammates = (p.team === 1 ? team1Roster : team2Roster).filter(t => t !== p);
+                        if (teammates.length > 0) {
+                            const target = teammates[Math.floor(Math.random() * teammates.length)];
+                            ball.x = target.x + (p.team === 1 ? 25 : -25);
+                            ball.y = target.y;
+                            ball.vx = p.team === 1 ? 12 : -12;
+                            ball.vy = 0;
+                            createParticles(ball.x, ball.y, '#f59e0b', 30);
+                            showToast("🎯 DE BRUYNE TELEPORT PASSED TO TEAMMATE!");
+                            playSound('ability');
+                            return;
+                        }
+                    }
+
+                    if (p.isStickyBall) {
+                        ball.attachedTo = p;
+                        showToast("🤙 BALL STUCK TO RONALDINHO!");
+                    }
+
+                    const nx = dx / dist; const ny = dy / dist;
+                    const overlap = minDist - dist;
+                    ball.x += nx * overlap * 0.7; ball.y += ny * overlap * 0.7;
+                    if (!p.isImmovable) { p.x -= nx * overlap * 0.3; p.y -= ny * overlap * 0.3; }
+
+                    const pMass = p.isImmovable ? 9999 : (p.mass || 80);
+                    const bMass = 35;
+
+                    const kx = p.vx - ball.vx; const ky = p.vy - ball.vy;
+                    const pDot = kx * nx + ky * ny;
+
+                    if (pDot > 0) {
+                        const impulse = (2 * pDot) / (pMass + bMass);
+                        if (!p.isImmovable) { p.vx -= impulse * bMass * nx; p.vy -= impulse * bMass * ny; }
+                        ball.vx += impulse * pMass * nx * 1.15;
+                        ball.vy += impulse * pMass * ny * 1.15;
+                        playSound('kick');
+                        createParticles(ball.x, ball.y, '#ffffff', 8);
+                    }
+                }
+            });
+
+            // 4. PLAYER - PLAYER COLLISIONS
+            for (let i = 0; i < allPlayers.length; i++) {
+                for (let j = i + 1; j < allPlayers.length; j++) {
+                    const p1 = allPlayers[i];
+                    const p2 = allPlayers[j];
+
+                    const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+                    const dist = Math.hypot(dx, dy);
+                    const minDist = p1.radius + p2.radius;
+
+                    if (dist < minDist && dist > 0) {
+                        const nx = dx / dist; const ny = dy / dist;
+                        const overlap = minDist - dist;
+
+                        if (p1.isBowlingBall) {
+                            p2.x += nx * overlap * 1.2; p2.y += ny * overlap * 1.2;
+                            p2.vx += nx * 16; p2.vy += ny * 16;
+                            createParticles(p2.x, p2.y, '#f59e0b', 12);
+                            playSound('bounce');
+                            continue;
+                        }
+
+                        if (p2.isBowlingBall) {
+                            p1.x -= nx * overlap * 1.2; p1.y -= ny * overlap * 1.2;
+                            p1.vx -= nx * 16; p1.vy -= ny * 16;
+                            createParticles(p1.x, p1.y, '#f59e0b', 12);
+                            playSound('bounce');
+                            continue;
+                        }
+
+                        if (p1.isImmovable) {
+                            p2.x += nx * overlap; p2.y += ny * overlap;
+                            p2.vx += nx * 10; p2.vy += ny * 10;
+                            continue;
+                        }
+                        if (p2.isImmovable) {
+                            p1.x -= nx * overlap; p1.y -= ny * overlap;
+                            p1.vx -= nx * 10; p1.vy -= ny * 10;
+                            continue;
+                        }
+
+                        p1.x -= nx * overlap * 0.5; p1.y -= ny * overlap * 0.5;
+                        p2.x += nx * overlap * 0.5; p2.y += ny * overlap * 0.5;
+
+                        const m1 = p1.mass || 80; const m2 = p2.mass || 80;
+                        const kx = p1.vx - p2.vx; const ky = p1.vy - p2.vy;
+                        const pDot = kx * nx + ky * ny;
+
+                        if (pDot > 0) {
+                            const impulse = (2 * pDot) / (m1 + m2);
+                            p1.vx -= impulse * m2 * nx; p1.vy -= impulse * m2 * ny;
+                            p2.vx += impulse * m1 * nx; p2.vy += impulse * m1 * ny;
+                            playSound('bounce');
+                        }
+                    }
+                }
+            }
+
+            if (totalMotion < 0.18) {
+                allPlayers.forEach(p => { 
+                    p.vx = 0; p.vy = 0; 
+                    p.isBowlingBall = false; p.isStickyBall = false; p.isLaserPass = false;
+                });
+                ball.vx = 0; ball.vy = 0; ball.attachedTo = null; ball.curveSpin = 0;
+                isMoving = false;
+
+                allPlayers.forEach(p => {
+                    if (p.isImmovable) {
+                        p.radius = PLAYER_RADIUS;
+                        p.isImmovable = false;
+                    }
+                });
+
+                // Decrement Courtois turns count at turn end
+                if (courtoisShrinkTurnsRemaining > 0) {
+                    courtoisShrinkTurnsRemaining--;
+                    if (courtoisShrinkTurnsRemaining === 0) courtoisShrinkTeam = 0;
+                }
+
+                if (messiExtraTurn) {
+                    messiExtraTurn = false;
+                    showToast("✨ MESSI EXTRA TURN CONTINUES!");
+                } else {
+                    currentTurn = currentTurn === 1 ? 2 : 1;
+                }
+
+                updateTurnUI();
+                updateRosterUI();
+            }
+        }
+
+        function handleGoalScored(scoringTeam) {
+            isMoving = false;
+            playSound('goal');
+
+            if (scoringTeam === 1) {
+                p1Score++;
+                document.getElementById('p1Score').innerText = p1Score;
+                showToast("⚽ GOAL RED SQUAD!");
+                createParticles(PITCH_WIDTH, PITCH_HEIGHT / 2, '#ef4444', 40);
+            } else {
+                p2Score++;
+                document.getElementById('p2Score').innerText = p2Score;
+                showToast("⚽ GOAL BLUE SQUAD!");
+                createParticles(0, PITCH_HEIGHT / 2, '#3b82f6', 40);
+            }
+
+            setTimeout(() => {
+                setupMatchPositions();
+                currentTurn = scoringTeam === 1 ? 2 : 1;
+                updateTurnUI();
+                updateRosterUI();
+            }, 1800);
+        }
+
+        function updateTurnUI() {
+            const indicator = document.getElementById('turnIndicator');
+            if (currentTurn === 1) {
+                indicator.innerText = "RED TEAM'S TURN";
+                indicator.className = "text-[10px] sm:text-xs font-black uppercase tracking-widest text-red-400";
+            } else {
+                indicator.innerText = "BLUE TEAM'S TURN";
+                indicator.className = "text-[10px] sm:text-xs font-black uppercase tracking-widest text-blue-400";
+            }
+        }
+
+        function createParticles(x, y, color, count = 15) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 2;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    color: color, life: 1.0, size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        function renderPitch() {
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(0, 0, PITCH_WIDTH, PITCH_HEIGHT);
+
+            const numStripes = 10;
+            const stripeWidth = PITCH_WIDTH / numStripes;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            for (let i = 0; i < numStripes; i += 2) {
+                ctx.fillRect(i * stripeWidth, 0, stripeWidth, PITCH_HEIGHT);
+            }
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(0, 0, PITCH_WIDTH, PITCH_HEIGHT);
+
+            ctx.beginPath();
+            ctx.moveTo(PITCH_WIDTH / 2, 0); ctx.lineTo(PITCH_WIDTH / 2, PITCH_HEIGHT);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(PITCH_WIDTH / 2, PITCH_HEIGHT / 2, 85, 0, Math.PI * 2);
+            ctx.stroke();
+
+            let leftGoalTop = GOAL_TOP, leftGoalBottom = GOAL_BOTTOM;
+            let rightGoalTop = GOAL_TOP, rightGoalBottom = GOAL_BOTTOM;
+
+            if (courtoisShrinkTurnsRemaining > 0 && courtoisShrinkTeam === 1) {
+                leftGoalTop = GOAL_TOP + GOAL_HEIGHT * 0.25;
+                leftGoalBottom = GOAL_BOTTOM - GOAL_HEIGHT * 0.25;
+            }
+            if (courtoisShrinkTurnsRemaining > 0 && courtoisShrinkTeam === 2) {
+                rightGoalTop = GOAL_TOP + GOAL_HEIGHT * 0.25;
+                rightGoalBottom = GOAL_BOTTOM - GOAL_HEIGHT * 0.25;
+            }
+
+            // Left & Right Goal Net Area
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+            ctx.fillRect(-GOAL_DEPTH, leftGoalTop, GOAL_DEPTH, leftGoalBottom - leftGoalTop);
+            ctx.fillRect(PITCH_WIDTH, rightGoalTop, GOAL_DEPTH, rightGoalBottom - rightGoalTop);
+
+            ctx.fillStyle = '#f8fafc';
+            const postCoords = [
+                { x: 0, y: leftGoalTop }, { x: 0, y: leftGoalBottom },
+                { x: PITCH_WIDTH, y: rightGoalTop }, { x: PITCH_WIDTH, y: rightGoalBottom }
+            ];
+
+            postCoords.forEach(post => {
+                ctx.beginPath(); ctx.arc(post.x, post.y, POST_RADIUS, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        function renderEntities() {
+            const allPlayers = [...team1Roster, ...team2Roster];
+
+            allPlayers.forEach(p => {
+                const isSelected = (!isMoving && p.team === currentTurn && p === (currentTurn === 1 ? team1Roster : team2Roster)[selectedPlayerIndex]);
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.team === 1 ? '#dc2626' : '#2563eb';
+                ctx.fill();
+
+                if (isSelected) {
+                    ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 4; ctx.stroke();
+                } else {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2; ctx.stroke();
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 13px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(p.num, p.x, p.y - 3);
+
+                ctx.font = '700 8px Inter';
+                ctx.fillStyle = p.rank === 'S' ? '#fef08a' : '#cbd5e1';
+                ctx.fillText(p.rank, p.x, p.y + 8);
+
+                ctx.restore();
+            });
+
+            if (isDragging && !isMoving) {
+                const activePlayer = (currentTurn === 1 ? team1Roster : team2Roster)[selectedPlayerIndex];
+                if (activePlayer) {
+                    const dx = dragStartX - dragCurrentX;
+                    const dy = dragStartY - dragCurrentY;
+                    const pullDist = Math.hypot(dx, dy);
+
+                    if (pullDist > 5) {
+                        ctx.save();
+                        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
+                        ctx.beginPath(); ctx.moveTo(activePlayer.x, activePlayer.y);
+                        ctx.lineTo(activePlayer.x + dx * 1.5, activePlayer.y + dy * 1.5);
+                        ctx.stroke();
+
+                        // Modrić Trivela collision physics trajectory preview with curve arc!
+                        const isModric = activePlayer.name.includes("Modrić") && ((currentTurn === 1 && p1SpecialActive) || (currentTurn === 2 && p2SpecialActive) || modricTrivelaActive);
+                        if (isModric) {
+                            ctx.strokeStyle = '#38bdf8';
+                            ctx.lineWidth = 3;
+                            ctx.setLineDash([4, 4]);
+
+                            const uLen = Math.hypot(dx, dy);
+                            if (uLen > 0) {
+                                const ux = dx / uLen;
+                                const uy = dy / uLen;
+
+                                // Modrić to Ball vector
+                                const DmBx = ball.x - activePlayer.x;
+                                const DmBy = ball.y - activePlayer.y;
+                                const pProj = DmBx * ux + DmBy * uy; // projection along launch direction
+                                const perpSq = (DmBx * DmBx + DmBy * DmBy) - pProj * pProj;
+                                const sumRadius = activePlayer.radius + ball.radius;
+
+                                let hitMx = activePlayer.x + ux * 150;
+                                let hitMy = activePlayer.y + uy * 150;
+                                let ballDirX = ux;
+                                let ballDirY = uy;
+
+                                if (pProj > 0 && perpSq < sumRadius * sumRadius) {
+                                    // Direct collision path with ball
+                                    const dHit = pProj - Math.sqrt(Math.max(0, sumRadius * sumRadius - perpSq));
+                                    hitMx = activePlayer.x + ux * dHit;
+                                    hitMy = activePlayer.y + uy * dHit;
+
+                                    // Collision normal pointing from Modrić to Ball at collision instant
+                                    const normX = (ball.x - hitMx) / sumRadius;
+                                    const normY = (ball.y - hitMy) / sumRadius;
+                                    ballDirX = normX;
+                                    ballDirY = normY;
+                                } else {
+                                    // Aiming near ball hypothesis
+                                    const normLen = Math.hypot(DmBx, DmBy);
+                                    if (normLen > 0) {
+                                        ballDirX = DmBx / normLen;
+                                        ballDirY = DmBy / normLen;
+                                    }
+                                }
+
+                                // 1. Draw Modrić's approach ray to ball collision
+                                ctx.beginPath();
+                                ctx.moveTo(activePlayer.x, activePlayer.y);
+                                ctx.lineTo(hitMx, hitMy);
+                                ctx.stroke();
+
+                                // 2. Draw Post-Collision Ball Curved Trajectory Arc starting from Ball!
+                                ctx.strokeStyle = '#fef08a';
+                                ctx.beginPath();
+                                ctx.moveTo(ball.x, ball.y);
+
+                                const forceMagnitude = Math.min(pullDist / 180, 1.0) * 180;
+                                const curveDist = Math.max(60, forceMagnitude * 1.5);
+                                const ballTargetX = ball.x + ballDirX * curveDist;
+                                const ballTargetY = ball.y + ballDirY * curveDist;
+
+                                // Trivela Curve Control Point
+                                const spinAmount = 0.45;
+                                const controlX = (ball.x + ballTargetX) / 2 + ballDirY * curveDist * spinAmount;
+                                const controlY = (ball.y + ballTargetY) / 2 - ballDirX * curveDist * spinAmount;
+
+                                ctx.quadraticCurveTo(controlX, controlY, ballTargetX, ballTargetY);
+                                ctx.stroke();
+
+                                // Ball Landing Target Indicator
+                                ctx.fillStyle = '#fef08a';
+                                ctx.beginPath();
+                                ctx.arc(ballTargetX, ballTargetY, 6, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        }
+
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Render Soccer Ball
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius - 1, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gamePhase === 'MATCH') {
+                    timerSeconds--;
+                    if (timerSeconds <= 0) handlePeriodEnd();
+                    updateTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (timerSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').innerText = `${mins}:${secs}`;
+        }
+
+        function handlePeriodEnd() {
+            if (currentHalf === 1) {
+                currentHalf = 2; gamePhase = 'HALFTIME';
+                document.getElementById('periodBadge').innerText = "2ND HALF";
+                document.getElementById('overlayTitle').innerText = "HALFTIME";
+                document.getElementById('overlaySubtitle').innerText = `Current Score: RED ${p1Score} - ${p2Score} BLUE`;
+                document.getElementById('overlayBtn').innerText = "START 2ND HALF";
+                document.getElementById('matchOverlay').classList.remove('hidden');
+            } else {
+                gamePhase = 'GAMEOVER';
+                document.getElementById('periodBadge').innerText = "FULLTIME";
+                document.getElementById('overlayTitle').innerText = p1Score > p2Score ? "🏆 RED TEAM WINS!" : (p2Score > p1Score ? "🏆 BLUE TEAM WINS!" : "🤝 MATCH DRAW!");
+                document.getElementById('overlaySubtitle').innerText = `Final Score: RED ${p1Score} - ${p2Score} BLUE`;
+                document.getElementById('overlayBtn').innerText = "NEW MATCH DRAFT";
+                document.getElementById('matchOverlay').classList.remove('hidden');
+            }
+        }
+
+        window.handleOverlayButtonClick = function() {
+            document.getElementById('matchOverlay').classList.add('hidden');
+            if (gamePhase === 'HALFTIME') {
+                gamePhase = 'MATCH'; timerSeconds = 120;
+                setupMatchPositions();
+                showToast("⚽ 2ND HALF KICKOFF!");
+            } else if (gamePhase === 'GAMEOVER') {
+                p1Score = 0; p2Score = 0;
+                document.getElementById('p1Score').innerText = "0";
+                document.getElementById('p2Score').innerText = "0";
+                document.getElementById('periodBadge').innerText = "DRAFT PHASE";
+                currentHalf = 1; timerSeconds = 120;
+                p1SpecialAbilityUsed = false; p2SpecialAbilityUsed = false;
+                p1SpecialActive = false; p2SpecialActive = false;
+                initDraftPhase();
+            }
+        };
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            renderPitch();
+            if (gamePhase === 'MATCH' || gamePhase === 'HALFTIME' || gamePhase === 'GAMEOVER') {
+                updatePhysics();
+                renderEntities();
+                updateAndDrawParticles();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            canvas = document.getElementById('gameCanvas');
+            canvas.width = PITCH_WIDTH; canvas.height = PITCH_HEIGHT;
+            ctx = canvas.getContext('2d');
+
+            setupInputListeners();
+            initDraftPhase();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
